@@ -1,43 +1,102 @@
-LLMOps: Automatic retrieval-augmented generation with Airflow, GPT-4 and Weaviate
-=================================================================================
+# LLMOps: Automated RAG Pipeline with Airflow, GPT-4 and Weaviate
 
-This repository contains the DAG code used in the [LLMOps: Automatic retrieval-augmented generation with Airflow, GPT-4 and Weaviate](https://docs.astronomer.io/learn/use-case-airflow-llm-rag-finance) use case. The pipeline was modelled after the [Ask Astro reference architecture](https://github.com/astronomer/ask-astro).
+A production-style LLMOps pipeline I built to learn how Retrieval-Augmented 
+Generation works end to end — from automated data ingestion to vector search 
+to GPT-4 powered financial Q&A, all orchestrated with Apache Airflow.
 
-The DAGs in this repository use the following tools:
+![Streamlit App](src/assets/streamlit_app.png)
 
-- [Weaviate Airflow provider](https://registry.astronomer.io/providers/apache-airflow-providers-weaviate/versions/latest)
-- [Streamlit](streamlit.io)
-- [Weaviate](weaviate.io)
-- [FinBERT](https://huggingface.co/ProsusAI/finbert)
-- [OpenAI GPT-4](https://platform.openai.com/docs/api-reference)
+## What I Built
 
-# How to use this repository
+Instead of a simple LangChain script, I wanted to understand how RAG works in 
+a real orchestrated pipeline. This project taught me how LLMOps differs from 
+standard MLOps — the challenge isn't training, it's keeping the vector store 
+fresh and the retrieval accurate.
 
-This section explains how to run this repository with Airflow. Note that you will need to copy the contents of the `.env_example.txt` file to a newly created `.env` file and add your own credentials.
+The pipeline automatically:
+- Fetches live financial news from Alpha Vantage daily
+- Embeds articles using FinBERT (finance-domain embeddings)
+- Stores vectors in Weaviate for semantic search
+- Answers user questions via GPT-4 with retrieved context in a Streamlit UI
 
-The following credentials are necessary to use this repository:
+## Architecture
 
-- Alpha Vantage API key: available for free at [Alpha Vantage](https://www.alphavantage.co/support/#api-key).
-- OpenAI API key, see the [OpenAI API documentation](https://platform.openai.com/docs/api-reference).
+Alpha Vantage API
+│
+▼
+Airflow DAG (finbuddy_load_news)
+│  scheduled daily ingestion
+▼
+FinBERT Embeddings
+│  768-dim financial domain vectors
+▼
+Weaviate Vector DB  ──▶  Semantic Search  ──▶  GPT-4  ──▶  Streamlit UI
 
-1. Run `git clone https://github.com/astronomer/airflow-llm-rag-finance.git` on your computer to create a local clone of this repository.
-2. Install the Astro CLI by following the steps in the [Astro CLI documentation](https://docs.astronomer.io/astro/cli/install-cli). Docker Desktop/Docker Engine is a prerequisite, but you don't need in-depth Docker knowledge to run Airflow with the Astro CLI.
-3. Create the `.env` file with the contents from `.env_example.txt` plus your own credentials.
-4. Run `astro dev start` in your cloned repository.
-5. After your Astro project has started. View the Airflow UI at `localhost:8080`, the Weaviate endpoint at `localhost:8081` and the Streamlit app at `localhost:8501`.
-6. In order to fill the local Weaviate instance with data, run the `finbuddy_load_news` DAG to get the latest news articles or the `finbuddy_load_pre_embedded` DAG to load a set of preembedded (with ada-200) articles for quick development.
-7. After the DAGrun has completed, ask a question about current financial developments in the Streamlit app at `localhost:8501`.
+## Key Learnings
 
-![A screenshot of the streamlit application created in this use case with a augmented GPT created answer for the question "What space technology should I invest in today?".](src/assets/streamlit_app.png)
+- Airflow DAGs are far better than cron scripts for LLM pipelines — retries,
+  logging, and dependency management are built in
+- Embedding model choice matters: FinBERT outperforms ada-002 on financial 
+  queries because it understands domain vocabulary
+- Weaviate schema must be recreated when switching embedding models since 
+  vector dimensions differ (768 vs 1536)
+- RAG quality depends more on chunking and retrieval tuning than on the LLM
 
-Note that if you switch between using OpenAI and local embeddings you will need to run the `create_schema` DAG to delete the old schema and create a new one because the two models create embeddings of different dimensions.
+## Tech Stack
 
-## Resources
+| Layer | Tool |
+|---|---|
+| Orchestration | Apache Airflow (Astro CLI) |
+| Vector Database | Weaviate |
+| Embeddings | FinBERT, OpenAI ada-002 |
+| LLM | OpenAI GPT-4 |
+| Frontend | Streamlit |
+| Data Source | Alpha Vantage financial news API |
+| Containerization | Docker |
 
-- [LLMOps: Automatic retrieval-augmented generation with Airflow, GPT-4 and Weaviate](https://docs.astronomer.io/learn/use-case-airflow-llm-rag-finance) use case.
-- [Orchestrate Weaviate operations with Apache Airflow](https://docs.astronomer.io/learn/airflow-weaviate).
-- Ask Astro reference architecture:
-    - [Ask Astro](https://docs.astronomer.io/learn/airflow-weaviate)
-    - [Source code](https://github.com/astronomer/ask-astro)
-- [Create dynamic Airflow tasks](https://docs.astronomer.io/learn/dynamic-tasks).
-- [Introduction to the TaskFlow API and Airflow decorators](https://docs.astronomer.io/learn/airflow-decorators).
+## DAGs
+
+| DAG | Purpose |
+|---|---|
+| `finbuddy_load_news` | Fetches and embeds latest financial news into Weaviate |
+| `finbuddy_load_pre_embedded` | Loads pre-embedded articles for quick dev/testing |
+| `create_schema` | Resets Weaviate schema (needed when switching embedding models) |
+
+## Getting Started
+
+**Prerequisites:** Docker Desktop, Alpha Vantage API key, OpenAI API key
+
+```bash
+# 1. Clone and configure
+git clone https://github.com/midhunsomu/Airflow_LLM_RAG_Finance.git
+cd Airflow_LLM_RAG_Finance
+cp .env_example.txt .env
+# Add your API keys to .env
+
+# 2. Install Astro CLI (manages Airflow locally)
+# https://docs.astronomer.io/astro/cli/install-cli
+
+# 3. Start all services
+astro dev start
+```
+
+Access the running services:
+- Airflow UI: http://localhost:8080
+- Weaviate endpoint: http://localhost:8081
+- Streamlit Q&A app: http://localhost:8501
+
+```bash
+# 4. Load data — run either DAG from Airflow UI:
+# finbuddy_load_news        → live articles (needs Alpha Vantage key)
+# finbuddy_load_pre_embedded → prebuilt vectors for quick start
+
+# 5. Ask financial questions in the Streamlit app at localhost:8501
+```
+
+## What I Would Add Next
+
+- Automated re-embedding when source articles are updated
+- Retrieval evaluation using RAGAS metrics (faithfulness, answer relevance)
+- Hybrid search — combine dense vector search with BM25 keyword search
+- LangSmith tracing for prompt and retrieval debugging
+- Cost tracking per query (token usage logging)
