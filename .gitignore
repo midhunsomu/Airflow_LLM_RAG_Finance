@@ -1,0 +1,6 @@
+.env
+.git
+**/.airflowignore
+__pycache__
+dev
+.DS_Store
