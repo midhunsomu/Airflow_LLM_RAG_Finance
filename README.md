@@ -21,15 +21,6 @@ The pipeline automatically:
 
 ## Architecture
 
-Alpha Vantage API
-Airflow DAG (finbuddy_load_news)
-│  scheduled daily ingestion
-▼
-FinBERT Embeddings
-│  768-dim financial domain vectors
-▼
-Weaviate Vector DB  ──▶  Semantic Search  ──▶  GPT-4  ──▶  Streamlit UI
-
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │                  LLMOps RAG Pipeline Architecture                    │
