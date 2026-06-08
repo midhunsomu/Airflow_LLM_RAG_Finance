@@ -22,8 +22,6 @@ The pipeline automatically:
 ## Architecture
 
 Alpha Vantage API
-│
-▼
 Airflow DAG (finbuddy_load_news)
 │  scheduled daily ingestion
 ▼
@@ -31,6 +29,48 @@ FinBERT Embeddings
 │  768-dim financial domain vectors
 ▼
 Weaviate Vector DB  ──▶  Semantic Search  ──▶  GPT-4  ──▶  Streamlit UI
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                  LLMOps RAG Pipeline Architecture                    │
+│                                                                     │
+│  ┌─────────────────┐    ┌───────────────────────────────────────┐  │
+│  │  Alpha Vantage  │───▶│         Apache Airflow                │  │
+│  │  Financial News │    │                                       │  │
+│  │  API            │    │  ┌─────────────────────────────────┐  │  │
+│  └─────────────────┘    │  │  finbuddy_load_news  (daily)    │  │  │
+│                         │  │  finbuddy_load_pre_embedded     │  │  │
+│                         │  │  create_schema                  │  │  │
+│                         │  └──────────────┬──────────────────┘  │  │
+│                         └─────────────────┼─────────────────────┘  │
+│                                           │                         │
+│                                           ▼                         │
+│                         ┌─────────────────────────────┐            │
+│                         │      FinBERT Embeddings      │            │
+│                         │   (finance-domain, 768-dim)  │            │
+│                         └──────────────┬──────────────┘            │
+│                                        │                            │
+│                                        ▼                            │
+│                         ┌─────────────────────────────┐            │
+│                         │       Weaviate Vector DB     │            │
+│                         │   semantic similarity search │            │
+│                         └──────────────┬──────────────┘            │
+│                                        │                            │
+│          User Question                 ▼                            │
+│  ┌──────────────┐      ┌─────────────────────────────┐            │
+│  │  Streamlit   │─────▶│   Retrieved Context Chunks  │            │
+│  │  UI          │      │   (top-k relevant articles)  │            │
+│  └──────┬───────┘      └──────────────┬──────────────┘            │
+│         │                             │                             │
+│         │              ┌──────────────▼──────────────┐            │
+│         │              │        OpenAI GPT-4          │            │
+│         │              │   question + context prompt  │            │
+│         │              └──────────────┬──────────────┘            │
+│         │                             │                             │
+│         └─────────────────────────────▼                            │
+│                    Augmented Answer to User                         │
+└─────────────────────────────────────────────────────────────────────┘
+```
 
 ## Key Learnings
 
